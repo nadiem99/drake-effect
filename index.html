@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>The Drake Effect</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0d0b;
+    --bg-2: #161411;
+    --ink: #f4ede0;
+    --ink-dim: #a89f8c;
+    --ink-faint: #6b6354;
+    --rule: #2a2621;
+    --tier1: #ff5a2c;       /* hot accent — true breakouts */
+    --tier1-glow: #ff8b5a;
+    --tier2: #5aa9c9;       /* cool accent — already rising */
+    --tier2-glow: #8ccce4;
+    --zero: #c9a961;        /* gold for the collab moment */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: 'Fraunces', serif; -webkit-font-smoothing: antialiased; }
+  body {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255, 90, 44, 0.06), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(90, 169, 201, 0.04), transparent 70%),
+      var(--bg);
+    min-height: 100vh;
+    padding: 48px 32px 80px;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  /* --- Header --- */
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 28px; height: 1px;
+    background: var(--ink-dim);
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 800;
+    font-size: clamp(48px, 7vw, 92px);
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+  }
+  h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--tier1);
+  }
+
+  .dek {
+    font-size: 18px;
+    line-height: 1.55;
+    color: var(--ink-dim);
+    max-width: 680px;
+    margin-bottom: 40px;
+    font-weight: 300;
+  }
+  .dek strong { color: var(--ink); font-weight: 600; }
+
+  /* --- Controls --- */
+  .controls {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .ctrl-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .toggle-group { display: flex; gap: 8px; align-items: center; }
+  .toggle {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink-dim);
+    padding: 7px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.18s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toggle .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: currentColor;
+  }
+  .toggle.tier1 { color: var(--tier1); border-color: rgba(255, 90, 44, 0.35); }
+  .toggle.tier1.active { background: rgba(255, 90, 44, 0.14); border-color: var(--tier1); color: var(--tier1-glow); }
+  .toggle.tier2 { color: var(--tier2); border-color: rgba(90, 169, 201, 0.35); }
+  .toggle.tier2.active { background: rgba(90, 169, 201, 0.14); border-color: var(--tier2); color: var(--tier2-glow); }
+  .toggle:not(.active) .dot { opacity: 0.25; }
+
+  /* --- Chart --- */
+  .chart-frame {
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 28px 28px 16px;
+    position: relative;
+  }
+
+  .chart-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+  }
+  .chart-subtitle {
+    font-size: 14px;
+    color: var(--ink-dim);
+    font-style: italic;
+    margin-bottom: 18px;
+    font-weight: 300;
+  }
+
+  svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+  .gridline { stroke: var(--rule); stroke-width: 1; }
+  .gridline-major { stroke: #332e27; }
+  .axis-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    fill: var(--ink-faint);
+  }
+  .axis-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    fill: var(--ink-dim);
+  }
+
+  .zero-line { stroke: var(--zero); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.7; }
+  .zero-label {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 13px;
+    fill: var(--zero);
+  }
+  .zero-label-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    fill: var(--zero);
+    opacity: 0.7;
+  }
+
+  .baseline-100 { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.5; }
+
+  .artist-line {
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    transition: opacity 0.2s ease, stroke-width 0.2s ease;
+    cursor: pointer;
+  }
+  .artist-line.tier1 { stroke: var(--tier1); }
+  .artist-line.tier2 { stroke: var(--tier2); opacity: 0.75; }
+  .artist-line.dimmed { opacity: 0.12; }
+  .artist-line.hidden { display: none; }
+  .artist-line.highlighted { stroke-width: 3; opacity: 1 !important; }
+
+  .endpoint-dot {
+    transition: opacity 0.2s ease, r 0.2s ease;
+    cursor: pointer;
+  }
+  .endpoint-dot.tier1 { fill: var(--tier1); }
+  .endpoint-dot.tier2 { fill: var(--tier2); }
+  .endpoint-dot.dimmed { opacity: 0.15; }
+  .endpoint-dot.hidden { display: none; }
+
+  .endpoint-label {
+    font-family: 'Fraunces', serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: var(--ink);
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .endpoint-label.tier1 { fill: var(--tier1-glow); }
+  .endpoint-label.tier2 { fill: var(--tier2-glow); }
+  .endpoint-label.dimmed { opacity: 0.2; }
+  .endpoint-label.hidden { display: none; }
+  .endpoint-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    fill: var(--ink-faint);
+    font-weight: 400;
+  }
+
+  .collab-dot {
+    stroke-width: 1.6;
+    transition: opacity 0.2s ease, r 0.2s ease;
+    cursor: pointer;
+  }
+  .collab-dot.tier1 { stroke: var(--tier1); fill: var(--zero); }
+  .collab-dot.tier2 { stroke: var(--tier2); fill: var(--zero); }
+  .collab-dot.dimmed { opacity: 0.15; }
+  .collab-dot.hidden { display: none; }
+  .collab-dot.highlighted { r: 6.5; }
+
+  /* --- Tooltip --- */
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(14, 13, 11, 0.96);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 12px 14px;
+    min-width: 200px;
+    font-family: 'Fraunces', serif;
+    opacity: 0;
+    transform: translate(-50%, -110%);
+    transition: opacity 0.15s ease;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+  }
+  .tooltip.visible { opacity: 1; }
+  .tt-artist { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+  .tt-track { font-size: 12px; font-style: italic; color: var(--ink-dim); margin-bottom: 10px; }
+  .tt-row { display: flex; justify-content: space-between; font-size: 11px; margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+  .tt-row span:first-child { color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; font-size: 9px; letter-spacing: 0.18em; }
+  .tt-row span:last-child { color: var(--ink); font-weight: 500; }
+  .tt-tier-pill {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 2px;
+    margin-top: 8px;
+  }
+  .tt-tier-pill.tier1 { background: rgba(255, 90, 44, 0.18); color: var(--tier1-glow); }
+  .tt-tier-pill.tier2 { background: rgba(90, 169, 201, 0.18); color: var(--tier2-glow); }
+
+  /* --- Legend / footer --- */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-top: 28px;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .legend { display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--ink-dim); max-width: 480px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; }
+  .legend-swatch { width: 22px; height: 2px; border-radius: 1px; }
+  .legend-swatch.t1 { background: var(--tier1); }
+  .legend-swatch.t2 { background: var(--tier2); }
+  .legend-swatch.zero { background: var(--zero); height: 0; border-top: 1.5px dashed var(--zero); }
+  .source {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    text-align: right;
+  }
+  .source em { font-style: normal; color: var(--tier1); }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Data Essay · Mockup · Sample data</div>
+
+  <h1>The <em>Drake</em><br/>Effect</h1>
+
+  <p class="dek">
+    A feature from Drake has, for more than a decade, functioned as a kind of cultural gateway —
+    launching regional artists into the mainstream and pulling entire genres into North American ears.
+    <strong>This chart tracks cultural attention (Google search interest) around the month of each artist's breakthrough Drake collaboration,</strong>
+    indexed so that the collab month equals 100. Today's Spotify monthly listeners are shown at each line's end for scale.
+  </p>
+
+  <div class="controls">
+    <span class="ctrl-label">Show:</span>
+    <div class="toggle-group">
+      <button class="toggle tier1 active" data-tier="1">
+        <span class="dot"></span>Tier 1 · Breakouts
+      </button>
+      <button class="toggle tier2 active" data-tier="2">
+        <span class="dot"></span>Tier 2 · Already rising
+      </button>
+    </div>
+  </div>
+
+  <div class="chart-frame" id="chartFrame">
+    <div class="chart-title">Fig. 01 · Cultural attention, indexed (Drake collab month = 100)</div>
+    <div class="chart-subtitle">Each line is one artist. Gold dots mark the release of each Drake collaboration.</div>
+
+    <svg id="chart" viewBox="0 0 1120 560" preserveAspectRatio="xMidYMid meet"></svg>
+
+    <div class="tooltip" id="tooltip">
+      <div class="tt-artist" id="ttArtist"></div>
+      <div class="tt-track" id="ttTrack"></div>
+      <div class="tt-row"><span>Month</span><span id="ttMonth"></span></div>
+      <div class="tt-row"><span>Indexed</span><span id="ttValue"></span></div>
+      <div class="tt-tier-pill" id="ttPill"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="legend">
+      <div class="legend-row"><div class="legend-swatch t1"></div><span><strong style="color:var(--ink)">Tier 1 — Breakouts.</strong> Limited mainstream visibility pre-collab; clear inflection at month zero.</span></div>
+      <div class="legend-row"><div class="legend-swatch t2"></div><span><strong style="color:var(--ink)">Tier 2 — Already rising.</strong> Artist had prior momentum; Drake amplified rather than launched.</span></div>
+      <div class="legend-row"><div class="legend-swatch zero"></div><span><strong style="color:var(--ink)">Month 0 · Gold dots.</strong> The release month of each artist's Drake collaboration, marked on each line.</span></div>
+    </div>
+    <div class="source">Source: <em>Google Trends</em> (cultural attention)<br/>Spotify (current monthly listeners)</div>
+  </div>
+
+</div>
+
+<script>
+/* =========================================================================
+   Data is loaded from data/artists.json (generated by scripts/fetch_trends.py)
+   and data/spotify_current.json (manually curated current monthly listeners).
+     { artist, track, tier, collabDate, collabMonthIdx, curve: number[] }
+   x = months relative to collab date (-24 … +24)
+   y = indexed value (collab month = 100)
+   ========================================================================= */
+
+let ARTISTS = [];
+let SPOTIFY = { listeners: {} };
+
+/* =========================================================================
+   Chart dimensions and scales
+   ========================================================================= */
+const svg = document.getElementById('chart');
+const W = 1120, H = 560;
+const M = { top: 30, right: 180, bottom: 56, left: 64 };
+const innerW = W - M.left - M.right;
+const innerH = H - M.top - M.bottom;
+
+const xMin = -24, xMax = 24;
+const yMin = 0, yMax = 1000;
+
+const xScale = (m) => M.left + ((m - xMin) / (xMax - xMin)) * innerW;
+const yScale = (v) => M.top + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
+
+/* Smooth curve: Catmull-Rom to Bezier */
+function smoothPath(points) {
+  if (points.length < 2) return '';
+  let d = `M ${points[0][0]} ${points[0][1]}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] || points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] || p2;
+    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
+
+/* =========================================================================
+   Render axes & grid
+   ========================================================================= */
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs = {}) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+// Y gridlines
+const yTicks = [0, 200, 400, 600, 800, 1000];
+yTicks.forEach(v => {
+  svg.appendChild(el('line', {
+    x1: M.left, x2: M.left + innerW,
+    y1: yScale(v), y2: yScale(v),
+    class: v === 100 ? 'baseline-100' : 'gridline'
+  }));
+  const label = el('text', {
+    x: M.left - 10, y: yScale(v) + 4,
+    'text-anchor': 'end',
+    class: 'axis-label'
+  });
+  label.textContent = v;
+  svg.appendChild(label);
+});
+
+// Baseline of 100 — explicitly drawn
+svg.appendChild(el('line', {
+  x1: M.left, x2: M.left + innerW,
+  y1: yScale(100), y2: yScale(100),
+  class: 'baseline-100'
+}));
+const baseLabel = el('text', {
+  x: M.left - 10, y: yScale(100) + 4,
+  'text-anchor': 'end',
+  class: 'axis-label'
+});
+baseLabel.textContent = '100';
+baseLabel.setAttribute('fill', 'var(--ink-dim)');
+svg.appendChild(baseLabel);
+
+// X gridlines + labels
+const xTicks = [-24, -18, -12, -6, 0, 6, 12, 18, 24];
+xTicks.forEach(m => {
+  if (m !== 0) {
+    svg.appendChild(el('line', {
+      x1: xScale(m), x2: xScale(m),
+      y1: M.top, y2: M.top + innerH,
+      class: 'gridline'
+    }));
+  }
+  const label = el('text', {
+    x: xScale(m), y: M.top + innerH + 22,
+    'text-anchor': 'middle',
+    class: 'axis-label'
+  });
+  label.textContent = m > 0 ? `+${m}` : m;
+  svg.appendChild(label);
+});
+
+// Axis titles
+const xTitle = el('text', {
+  x: M.left + innerW / 2, y: M.top + innerH + 46,
+  'text-anchor': 'middle',
+  class: 'axis-title'
+});
+xTitle.textContent = 'Months from Drake collaboration';
+svg.appendChild(xTitle);
+
+const yTitle = el('text', {
+  x: -(M.top + innerH / 2), y: 18,
+  'text-anchor': 'middle',
+  transform: 'rotate(-90)',
+  class: 'axis-title'
+});
+yTitle.textContent = 'Cultural attention (indexed)';
+svg.appendChild(yTitle);
+
+/* Zero line — the collab moment */
+svg.appendChild(el('line', {
+  x1: xScale(0), x2: xScale(0),
+  y1: M.top, y2: M.top + innerH,
+  class: 'zero-line'
+}));
+const zeroLabel = el('text', {
+  x: xScale(0) + 8, y: M.top + 14,
+  class: 'zero-label-sub'
+});
+zeroLabel.textContent = 'DRAKE COLLAB →';
+svg.appendChild(zeroLabel);
+
+const zeroLabel2 = el('text', {
+  x: xScale(0) + 8, y: M.top + 30,
+  class: 'zero-label'
+});
+zeroLabel2.textContent = 'Month 0';
+zeroLabel2.setAttribute('font-style', 'italic');
+svg.appendChild(zeroLabel2);
+
+/* =========================================================================
+   Render artist lines (async — awaits data fetch)
+   ========================================================================= */
+const linesGroup = el('g');
+const dotsGroup = el('g');
+const collabGroup = el('g');
+const labelsGroup = el('g');
+svg.appendChild(linesGroup);
+svg.appendChild(dotsGroup);
+svg.appendChild(collabGroup);
+svg.appendChild(labelsGroup);
+
+const artistEls = [];
+
+// Track used label y-positions to avoid collisions
+const usedLabelYs = [];
+function findFreeY(desiredY, minGap = 22) {
+  let y = desiredY;
+  let adjusted = true;
+  while (adjusted) {
+    adjusted = false;
+    for (const used of usedLabelYs) {
+      if (Math.abs(y - used) < minGap) {
+        y = used + minGap;
+        adjusted = true;
+      }
+    }
+  }
+  usedLabelYs.push(y);
+  return y;
+}
+
+function formatListeners(n) {
+  if (n == null) return '';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M monthly`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K monthly`;
+  return `${n} monthly`;
+}
+
+function renderArtists() {
+  // Sort by final value so labels stack sensibly
+  const sortedArtists = [...ARTISTS].sort((a, b) => b.curve[b.curve.length - 1] - a.curve[a.curve.length - 1]);
+
+  sortedArtists.forEach((a) => {
+    const points = a.curve.map((v, i) => [xScale(xMin + i), yScale(Math.min(v, yMax))]);
+
+    const path = el('path', {
+      d: smoothPath(points),
+      class: `artist-line tier${a.tier}`,
+      'data-artist': a.artist,
+      'data-tier': a.tier,
+    });
+    linesGroup.appendChild(path);
+
+    // Endpoint dot
+    const lastPoint = points[points.length - 1];
+    const dot = el('circle', {
+      cx: lastPoint[0], cy: lastPoint[1], r: 3.5,
+      class: `endpoint-dot tier${a.tier}`,
+      'data-artist': a.artist,
+      'data-tier': a.tier,
+    });
+    dotsGroup.appendChild(dot);
+
+    // Collab dot at month 0 — gold, tier-stroked
+    const collabPoint = points[a.collabMonthIdx];
+    const collabDot = el('circle', {
+      cx: collabPoint[0], cy: collabPoint[1], r: 5,
+      class: `collab-dot tier${a.tier}`,
+      'data-artist': a.artist,
+      'data-tier': a.tier,
+    });
+    collabGroup.appendChild(collabDot);
+
+    // Endpoint label: artist name + current monthly listeners (with collision avoidance)
+    const labelY = findFreeY(lastPoint[1] + 4);
+    const label = el('text', {
+      x: lastPoint[0] + 10, y: labelY,
+      class: `endpoint-label tier${a.tier}`,
+      'data-artist': a.artist,
+      'data-tier': a.tier,
+    });
+    const nameSpan = el('tspan', { x: lastPoint[0] + 10, dy: 0 });
+    nameSpan.textContent = a.artist;
+    label.appendChild(nameSpan);
+
+    const listeners = SPOTIFY.listeners ? SPOTIFY.listeners[a.artist] : null;
+    if (listeners) {
+      const subSpan = el('tspan', {
+        x: lastPoint[0] + 10, dy: 12,
+        class: 'endpoint-sub',
+      });
+      subSpan.textContent = formatListeners(listeners);
+      label.appendChild(subSpan);
+    }
+    labelsGroup.appendChild(label);
+
+    // Invisible hover hitbox (wider than the line)
+    const hitbox = el('path', {
+      d: smoothPath(points),
+      fill: 'none',
+      stroke: 'transparent',
+      'stroke-width': 14,
+      style: 'cursor: pointer; pointer-events: stroke;',
+      'data-artist': a.artist,
+    });
+    linesGroup.appendChild(hitbox);
+
+    artistEls.push({ path, dot, collabDot, label, hitbox, data: a, points });
+  });
+}
+
+/* =========================================================================
+   Interactivity: tier toggles, hover
+   ========================================================================= */
+const chartFrame = document.getElementById('chartFrame');
+const tooltip = document.getElementById('tooltip');
+const ttArtist = document.getElementById('ttArtist');
+const ttTrack = document.getElementById('ttTrack');
+const ttMonth = document.getElementById('ttMonth');
+const ttValue = document.getElementById('ttValue');
+const ttPill = document.getElementById('ttPill');
+
+const tierState = { 1: true, 2: true };
+
+document.querySelectorAll('.toggle').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const t = btn.dataset.tier;
+    tierState[t] = !tierState[t];
+    btn.classList.toggle('active', tierState[t]);
+    updateVisibility();
+  });
+});
+
+function updateVisibility() {
+  artistEls.forEach(a => {
+    const on = tierState[a.data.tier];
+    a.path.classList.toggle('hidden', !on);
+    a.dot.classList.toggle('hidden', !on);
+    a.collabDot.classList.toggle('hidden', !on);
+    a.label.classList.toggle('hidden', !on);
+  });
+}
+
+function setHighlight(artistName) {
+  artistEls.forEach(a => {
+    const match = a.data.artist === artistName;
+    const on = tierState[a.data.tier];
+    if (!on) return;
+    a.path.classList.toggle('highlighted', match);
+    a.path.classList.toggle('dimmed', !match);
+    a.dot.classList.toggle('dimmed', !match);
+    a.collabDot.classList.toggle('dimmed', !match);
+    a.collabDot.classList.toggle('highlighted', match);
+    a.label.classList.toggle('dimmed', !match);
+  });
+}
+
+function clearHighlight() {
+  artistEls.forEach(a => {
+    a.path.classList.remove('highlighted', 'dimmed');
+    a.dot.classList.remove('dimmed');
+    a.collabDot.classList.remove('dimmed', 'highlighted');
+    a.label.classList.remove('dimmed');
+  });
+}
+
+function showTooltipAt(a, month, value, clientX, clientY) {
+  ttArtist.textContent = a.artist;
+  ttTrack.textContent = a.track;
+  ttMonth.textContent = month > 0 ? `+${month}` : `${month}`;
+  ttValue.textContent = Math.round(value);
+  ttPill.textContent = a.tier === 1 ? 'Tier 1 · Breakout' : 'Tier 2 · Already rising';
+  ttPill.className = `tt-tier-pill tier${a.tier}`;
+
+  const rect = chartFrame.getBoundingClientRect();
+  tooltip.style.left = (clientX - rect.left) + 'px';
+  tooltip.style.top = (clientY - rect.top) + 'px';
+  tooltip.classList.add('visible');
+}
+
+function wireInteractions() {
+  artistEls.forEach(a => {
+    const onEnter = (e) => {
+      setHighlight(a.data.artist);
+      const svgRect = svg.getBoundingClientRect();
+      const relX = e.clientX - svgRect.left;
+      const scaleFactor = svgRect.width / W;
+      const svgX = relX / scaleFactor;
+      const monthApprox = xMin + ((svgX - M.left) / innerW) * (xMax - xMin);
+      const monthIdx = Math.max(0, Math.min(a.data.curve.length - 1, Math.round(monthApprox - xMin)));
+      const month = xMin + monthIdx;
+      const value = a.data.curve[monthIdx];
+      showTooltipAt(a.data, month, value, e.clientX, e.clientY);
+    };
+    const onCollabEnter = (e) => {
+      setHighlight(a.data.artist);
+      showTooltipAt(a.data, 0, a.data.curve[a.data.collabMonthIdx], e.clientX, e.clientY);
+    };
+    const onLeave = () => {
+      clearHighlight();
+      tooltip.classList.remove('visible');
+    };
+    a.hitbox.addEventListener('mousemove', onEnter);
+    a.dot.addEventListener('mousemove', onEnter);
+    a.collabDot.addEventListener('mousemove', onCollabEnter);
+    a.hitbox.addEventListener('mouseleave', onLeave);
+    a.dot.addEventListener('mouseleave', onLeave);
+    a.collabDot.addEventListener('mouseleave', onLeave);
+  });
+}
+
+async function init() {
+  try {
+    const [artistsResp, spotifyResp] = await Promise.all([
+      fetch('data/artists.json'),
+      fetch('data/spotify_current.json'),
+    ]);
+    if (!artistsResp.ok) throw new Error(`artists.json ${artistsResp.status}`);
+    ARTISTS = await artistsResp.json();
+    if (spotifyResp.ok) SPOTIFY = await spotifyResp.json();
+  } catch (err) {
+    console.error('Failed to load data:', err);
+    const msg = el('text', {
+      x: M.left + innerW / 2, y: M.top + innerH / 2,
+      'text-anchor': 'middle',
+      class: 'axis-label',
+    });
+    msg.textContent = 'Data failed to load — check console.';
+    svg.appendChild(msg);
+    return;
+  }
+  renderArtists();
+  wireInteractions();
+}
+
+init();
+</script>
+</body>
+</html>
