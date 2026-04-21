@@ -181,7 +181,7 @@
     opacity: 0.7;
   }
 
-  .baseline-100 { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.5; }
+  .baseline-zero { stroke: var(--ink-dim); stroke-width: 1.2; opacity: 0.75; }
 
   .artist-line {
     fill: none;
@@ -236,6 +236,20 @@
   .collab-dot.dimmed { opacity: 0.15; }
   .collab-dot.hidden { display: none; }
   .collab-dot.highlighted { r: 6.5; }
+
+  .peak-dot {
+    stroke: var(--zero);
+    stroke-width: 1.5;
+    transition: opacity 0.2s ease, r 0.2s ease;
+    cursor: pointer;
+  }
+  .peak-dot.tier1 { fill: var(--tier1); }
+  .peak-dot.tier2 { fill: var(--tier2); opacity: 0.85; }
+  .peak-dot.dimmed { opacity: 0.15; }
+  .peak-dot.hidden { display: none; }
+  .peak-dot.highlighted { r: 6; }
+
+  .endpoint-sub.peak { fill: var(--ink-dim); font-weight: 500; }
 
   /* --- Tooltip --- */
   .tooltip {
@@ -309,8 +323,8 @@
   <p class="dek">
     A feature from Drake has, for more than a decade, functioned as a kind of cultural gateway —
     launching regional artists into the mainstream and pulling entire genres into North American ears.
-    <strong>This chart tracks cultural attention (Google search interest) around the month of each artist's breakthrough Drake collaboration,</strong>
-    indexed so that the collab month equals 100. Today's Spotify monthly listeners are shown at each line's end for scale.
+    <strong>This chart shows the percentage change in cultural attention (Google search interest) around each artist's breakthrough Drake collaboration,</strong>
+    with the collab month set to zero. Each line's peak lift and today's Spotify monthly listeners appear at the end of the line.
   </p>
 
   <div class="controls">
@@ -326,8 +340,8 @@
   </div>
 
   <div class="chart-frame" id="chartFrame">
-    <div class="chart-title">Fig. 01 · Cultural attention, indexed (Drake collab month = 100)</div>
-    <div class="chart-subtitle">Each line is one artist. Gold dots mark the release of each Drake collaboration.</div>
+    <div class="chart-title">Fig. 01 · % change in cultural attention vs. Drake collab month</div>
+    <div class="chart-subtitle">Each line tracks one artist's Google search interest, with the collab month set to 0%. Above the baseline = more attention than collab month; below = less.</div>
 
     <svg id="chart" viewBox="0 0 1120 560" preserveAspectRatio="xMidYMid meet"></svg>
 
@@ -335,7 +349,7 @@
       <div class="tt-artist" id="ttArtist"></div>
       <div class="tt-track" id="ttTrack"></div>
       <div class="tt-row"><span>Month</span><span id="ttMonth"></span></div>
-      <div class="tt-row"><span>Indexed</span><span id="ttValue"></span></div>
+      <div class="tt-row"><span>vs. collab</span><span id="ttValue"></span></div>
       <div class="tt-tier-pill" id="ttPill"></div>
     </div>
   </div>
@@ -344,7 +358,7 @@
     <div class="legend">
       <div class="legend-row"><div class="legend-swatch t1"></div><span><strong style="color:var(--ink)">Tier 1 — Breakouts.</strong> Limited mainstream visibility pre-collab; clear inflection at month zero.</span></div>
       <div class="legend-row"><div class="legend-swatch t2"></div><span><strong style="color:var(--ink)">Tier 2 — Already rising.</strong> Artist had prior momentum; Drake amplified rather than launched.</span></div>
-      <div class="legend-row"><div class="legend-swatch zero"></div><span><strong style="color:var(--ink)">Month 0 · Gold dots.</strong> The release month of each artist's Drake collaboration, marked on each line.</span></div>
+      <div class="legend-row"><div class="legend-swatch zero"></div><span><strong style="color:var(--ink)">Gold diamond.</strong> Each artist's peak month in the two years after the Drake collab. Its distance from the origin shows how long the bump took to crest.</span></div>
     </div>
     <div class="source">Source: <em>Google Trends</em> (cultural attention)<br/>Spotify (current monthly listeners)</div>
   </div>
@@ -372,8 +386,8 @@ const M = { top: 30, right: 180, bottom: 56, left: 64 };
 const innerW = W - M.left - M.right;
 const innerH = H - M.top - M.bottom;
 
-const xMin = -24, xMax = 24;
-const yMin = 0, yMax = 1000;
+const xMin = 0, xMax = 24;
+const yMin = -100, yMax = 400;
 
 const xScale = (m) => M.left + ((m - xMin) / (xMax - xMin)) * innerW;
 const yScale = (v) => M.top + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
@@ -407,39 +421,25 @@ function el(tag, attrs = {}) {
 }
 
 // Y gridlines
-const yTicks = [0, 200, 400, 600, 800, 1000];
+const yTicks = [-100, 0, 100, 200, 400];
 yTicks.forEach(v => {
   svg.appendChild(el('line', {
     x1: M.left, x2: M.left + innerW,
     y1: yScale(v), y2: yScale(v),
-    class: v === 100 ? 'baseline-100' : 'gridline'
+    class: v === 0 ? 'baseline-zero' : 'gridline'
   }));
   const label = el('text', {
     x: M.left - 10, y: yScale(v) + 4,
     'text-anchor': 'end',
     class: 'axis-label'
   });
-  label.textContent = v;
+  label.textContent = (v > 0 ? '+' : '') + v + '%';
+  if (v === 0) label.setAttribute('fill', 'var(--ink)');
   svg.appendChild(label);
 });
 
-// Baseline of 100 — explicitly drawn
-svg.appendChild(el('line', {
-  x1: M.left, x2: M.left + innerW,
-  y1: yScale(100), y2: yScale(100),
-  class: 'baseline-100'
-}));
-const baseLabel = el('text', {
-  x: M.left - 10, y: yScale(100) + 4,
-  'text-anchor': 'end',
-  class: 'axis-label'
-});
-baseLabel.textContent = '100';
-baseLabel.setAttribute('fill', 'var(--ink-dim)');
-svg.appendChild(baseLabel);
-
 // X gridlines + labels
-const xTicks = [-24, -18, -12, -6, 0, 6, 12, 18, 24];
+const xTicks = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 xTicks.forEach(m => {
   if (m !== 0) {
     svg.appendChild(el('line', {
@@ -453,7 +453,7 @@ xTicks.forEach(m => {
     'text-anchor': 'middle',
     class: 'axis-label'
   });
-  label.textContent = m > 0 ? `+${m}` : m;
+  label.textContent = m === 0 ? 'collab' : `+${m}`;
   svg.appendChild(label);
 });
 
@@ -463,7 +463,7 @@ const xTitle = el('text', {
   'text-anchor': 'middle',
   class: 'axis-title'
 });
-xTitle.textContent = 'Months from Drake collaboration';
+xTitle.textContent = 'Months after Drake collaboration';
 svg.appendChild(xTitle);
 
 const yTitle = el('text', {
@@ -472,29 +472,10 @@ const yTitle = el('text', {
   transform: 'rotate(-90)',
   class: 'axis-title'
 });
-yTitle.textContent = 'Cultural attention (indexed)';
+yTitle.textContent = 'Change in cultural attention';
 svg.appendChild(yTitle);
 
-/* Zero line — the collab moment */
-svg.appendChild(el('line', {
-  x1: xScale(0), x2: xScale(0),
-  y1: M.top, y2: M.top + innerH,
-  class: 'zero-line'
-}));
-const zeroLabel = el('text', {
-  x: xScale(0) + 8, y: M.top + 14,
-  class: 'zero-label-sub'
-});
-zeroLabel.textContent = 'DRAKE COLLAB →';
-svg.appendChild(zeroLabel);
-
-const zeroLabel2 = el('text', {
-  x: xScale(0) + 8, y: M.top + 30,
-  class: 'zero-label'
-});
-zeroLabel2.textContent = 'Month 0';
-zeroLabel2.setAttribute('font-style', 'italic');
-svg.appendChild(zeroLabel2);
+/* The x-axis origin IS the collab moment now — no vertical line needed. */
 
 /* =========================================================================
    Render artist lines (async — awaits data fetch)
@@ -512,7 +493,7 @@ const artistEls = [];
 
 // Track used label y-positions to avoid collisions
 const usedLabelYs = [];
-function findFreeY(desiredY, minGap = 22) {
+function findFreeY(desiredY, minGap = 32) {
   let y = desiredY;
   let adjusted = true;
   while (adjusted) {
@@ -560,17 +541,22 @@ function renderArtists() {
     });
     dotsGroup.appendChild(dot);
 
-    // Collab dot at month 0 — gold, tier-stroked
-    const collabPoint = points[a.collabMonthIdx];
-    const collabDot = el('circle', {
-      cx: collabPoint[0], cy: collabPoint[1], r: 5,
-      class: `collab-dot tier${a.tier}`,
+    // Peak marker — diamond at the post-collab peak (visually clipped at yMax).
+    // Collab moment isn't marked as a dot anymore: the origin of the x-axis
+    // IS the collab moment now.
+    const peakIdx = a.collabMonthIdx + (a.peakMonth ?? 0);
+    const peakVisualPct = Math.min(a.peakPct, yMax);
+    const px = xScale(xMin + peakIdx), py = yScale(peakVisualPct);
+    const r = 5;
+    const peakDot = el('polygon', {
+      points: `${px},${py - r} ${px + r},${py} ${px},${py + r} ${px - r},${py}`,
+      class: `peak-dot tier${a.tier}`,
       'data-artist': a.artist,
       'data-tier': a.tier,
     });
-    collabGroup.appendChild(collabDot);
+    collabGroup.appendChild(peakDot);
 
-    // Endpoint label: artist name + current monthly listeners (with collision avoidance)
+    // Endpoint label: artist / peak lift / current monthly (with collision avoidance)
     const labelY = findFreeY(lastPoint[1] + 4);
     const label = el('text', {
       x: lastPoint[0] + 10, y: labelY,
@@ -581,6 +567,16 @@ function renderArtists() {
     const nameSpan = el('tspan', { x: lastPoint[0] + 10, dy: 0 });
     nameSpan.textContent = a.artist;
     label.appendChild(nameSpan);
+
+    if (typeof a.peakPct === 'number') {
+      const peakSpan = el('tspan', {
+        x: lastPoint[0] + 10, dy: 13,
+        class: 'endpoint-sub peak',
+      });
+      const pk = Math.round(a.peakPct);
+      peakSpan.textContent = `${pk >= 0 ? '+' : ''}${pk}% at +${a.peakMonth}mo`;
+      label.appendChild(peakSpan);
+    }
 
     const listeners = SPOTIFY.listeners ? SPOTIFY.listeners[a.artist] : null;
     if (listeners) {
@@ -604,7 +600,7 @@ function renderArtists() {
     });
     linesGroup.appendChild(hitbox);
 
-    artistEls.push({ path, dot, collabDot, label, hitbox, data: a, points });
+    artistEls.push({ path, dot, peakDot, label, hitbox, data: a, points });
   });
 }
 
@@ -635,7 +631,7 @@ function updateVisibility() {
     const on = tierState[a.data.tier];
     a.path.classList.toggle('hidden', !on);
     a.dot.classList.toggle('hidden', !on);
-    a.collabDot.classList.toggle('hidden', !on);
+    a.peakDot.classList.toggle('hidden', !on);
     a.label.classList.toggle('hidden', !on);
   });
 }
@@ -648,8 +644,8 @@ function setHighlight(artistName) {
     a.path.classList.toggle('highlighted', match);
     a.path.classList.toggle('dimmed', !match);
     a.dot.classList.toggle('dimmed', !match);
-    a.collabDot.classList.toggle('dimmed', !match);
-    a.collabDot.classList.toggle('highlighted', match);
+    a.peakDot.classList.toggle('dimmed', !match);
+    a.peakDot.classList.toggle('highlighted', match);
     a.label.classList.toggle('dimmed', !match);
   });
 }
@@ -658,7 +654,7 @@ function clearHighlight() {
   artistEls.forEach(a => {
     a.path.classList.remove('highlighted', 'dimmed');
     a.dot.classList.remove('dimmed');
-    a.collabDot.classList.remove('dimmed', 'highlighted');
+    a.peakDot.classList.remove('dimmed', 'highlighted');
     a.label.classList.remove('dimmed');
   });
 }
@@ -667,7 +663,8 @@ function showTooltipAt(a, month, value, clientX, clientY) {
   ttArtist.textContent = a.artist;
   ttTrack.textContent = a.track;
   ttMonth.textContent = month > 0 ? `+${month}` : `${month}`;
-  ttValue.textContent = Math.round(value);
+  const rounded = Math.round(value);
+  ttValue.textContent = (rounded > 0 ? '+' : '') + rounded + '%';
   ttPill.textContent = a.tier === 1 ? 'Tier 1 · Breakout' : 'Tier 2 · Already rising';
   ttPill.className = `tt-tier-pill tier${a.tier}`;
 
@@ -691,9 +688,9 @@ function wireInteractions() {
       const value = a.data.curve[monthIdx];
       showTooltipAt(a.data, month, value, e.clientX, e.clientY);
     };
-    const onCollabEnter = (e) => {
+    const onPeakEnter = (e) => {
       setHighlight(a.data.artist);
-      showTooltipAt(a.data, 0, a.data.curve[a.data.collabMonthIdx], e.clientX, e.clientY);
+      showTooltipAt(a.data, a.data.peakMonth, a.data.peakPct, e.clientX, e.clientY);
     };
     const onLeave = () => {
       clearHighlight();
@@ -701,10 +698,10 @@ function wireInteractions() {
     };
     a.hitbox.addEventListener('mousemove', onEnter);
     a.dot.addEventListener('mousemove', onEnter);
-    a.collabDot.addEventListener('mousemove', onCollabEnter);
+    a.peakDot.addEventListener('mousemove', onPeakEnter);
     a.hitbox.addEventListener('mouseleave', onLeave);
     a.dot.addEventListener('mouseleave', onLeave);
-    a.collabDot.addEventListener('mouseleave', onLeave);
+    a.peakDot.addEventListener('mouseleave', onLeave);
   });
 }
 

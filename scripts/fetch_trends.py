@@ -13,22 +13,23 @@ from pytrends.request import TrendReq
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "artists.json"
 
-WINDOW_MONTHS = 24  # ± on each side of collab
-Y_CAP = 1000
+PRE_MONTHS = 3      # tiny lookback so the collab-month baseline isn't a blind edge
+POST_MONTHS = 24    # main story: what happens in the 2 years after collab
+# Curve is PERCENT CHANGE from the collab month value.
+# Collab month = 0%. +100% = twice as much attention. -50% = half. -100% = zero.
+PCT_CAP = 900
 
 ARTISTS = [
-    # Tier 1 — Breakouts
-    {"artist": "BlocBoy JB",    "query": "BlocBoy JB",     "track": "Look Alive (2018)",          "tier": 1, "collab": "2018-02"},
-    {"artist": "iLoveMakonnen", "query": "iLoveMakonnen",  "track": "Tuesday remix (2014)",       "tier": 1, "collab": "2014-10"},
-    {"artist": "Yung Bleu",     "query": "Yung Bleu",      "track": "You're Mines Still (2021)",  "tier": 1, "collab": "2021-04"},
-    {"artist": "Tems",          "query": "Tems singer",    "track": "Fountains (2021)",           "tier": 1, "collab": "2021-09"},
-    {"artist": "Lil Baby",      "query": "Lil Baby",       "track": "Yes Indeed (2018)",          "tier": 1, "collab": "2018-05"},
-    {"artist": "Jorja Smith",   "query": "Jorja Smith",    "track": "Get It Together (2017)",     "tier": 1, "collab": "2017-03"},
-    # Tier 2 — Already rising
-    {"artist": "Migos",         "query": "Migos rap",      "track": "Versace remix (2013)",       "tier": 2, "collab": "2013-08"},
-    {"artist": "Wizkid",        "query": "Wizkid",         "track": "One Dance (2016)",           "tier": 2, "collab": "2016-04"},
-    {"artist": "Central Cee",   "query": "Central Cee",    "track": "On The Radar (2023)",        "tier": 2, "collab": "2023-06"},
-    {"artist": "Bad Bunny",     "query": "Bad Bunny",      "track": "MIA (2018)",                 "tier": 2, "collab": "2018-10"},
+    # Tier 1 — Breakouts: Drake was clearly the gateway
+    {"artist": "Jorja Smith",   "query": "Jorja Smith",     "track": "Get It Together (2017)",     "tier": 1, "collab": "2017-03"},
+    {"artist": "Dave",          "query": "Dave rapper",     "track": "Wanna Know remix (2016)",    "tier": 1, "collab": "2016-04"},
+    {"artist": "Tems",          "query": "Tems singer",     "track": "Fountains (2021)",           "tier": 1, "collab": "2021-09"},
+    {"artist": "Lil Baby",      "query": "Lil Baby",        "track": "Yes Indeed (2018)",          "tier": 1, "collab": "2018-05"},
+    {"artist": "The Weeknd",    "query": "The Weeknd",      "track": "Crew Love (2011)",           "tier": 1, "collab": "2011-11"},
+    # Tier 2 — Amplified: Drake accelerated existing momentum
+    {"artist": "Migos",         "query": "Migos rap",       "track": "Versace remix (2013)",       "tier": 2, "collab": "2013-08"},
+    {"artist": "Wizkid",        "query": "Wizkid",          "track": "One Dance (2016)",           "tier": 2, "collab": "2016-04"},
+    {"artist": "Central Cee",   "query": "Central Cee",     "track": "On The Radar (2023)",        "tier": 2, "collab": "2023-06"},
 ]
 
 
@@ -38,14 +39,16 @@ def month_offset(year_month: str, months: int) -> str:
     return f"{total // 12:04d}-{total % 12 + 1:02d}"
 
 
-def month_range(collab: str, window: int) -> list[str]:
-    return [month_offset(collab, i) for i in range(-window, window + 1)]
+def month_range(collab: str, pre: int, post: int) -> list[str]:
+    return [month_offset(collab, i) for i in range(-pre, post + 1)]
 
 
 def fetch_one(pytrends: TrendReq, entry: dict) -> list[float]:
     collab = entry["collab"]
-    start = month_offset(collab, -WINDOW_MONTHS)
-    end = month_offset(collab, WINDOW_MONTHS)
+    # Fetch a small pre-window so the 3-month smoother has a real anchor at
+    # the collab month, but we trim it before returning — chart starts at 0.
+    start = month_offset(collab, -PRE_MONTHS)
+    end = month_offset(collab, POST_MONTHS)
     timeframe = f"{start}-01 {end}-28"
 
     pytrends.build_payload([entry["query"]], timeframe=timeframe, geo="")
@@ -54,33 +57,27 @@ def fetch_one(pytrends: TrendReq, entry: dict) -> list[float]:
         raise RuntimeError(f"No Trends data for {entry['artist']} ({entry['query']})")
 
     series = df[entry["query"]].astype(float)
-    # Resample weekly -> monthly (mean)
     monthly = series.resample("MS").mean()
-    # Index by YYYY-MM string for easy lookup
     monthly.index = monthly.index.strftime("%Y-%m")
 
-    # Ensure every expected month is represented (forward-fill tiny gaps)
-    months = month_range(collab, WINDOW_MONTHS)
+    months = month_range(collab, PRE_MONTHS, POST_MONTHS)
     values = [float(monthly.get(m, float("nan"))) for m in months]
-
-    # Fill any NaN with nearest non-nan neighbor (rare)
     s = pd.Series(values).ffill().bfill()
     raw = s.tolist()
 
-    # 3-month rolling smooth
     smoothed = pd.Series(raw).rolling(window=3, min_periods=1, center=True).mean().tolist()
 
-    collab_val = smoothed[WINDOW_MONTHS]
+    collab_val = smoothed[PRE_MONTHS]
     if collab_val <= 0:
-        # Degenerate case: artist had ~zero pre-collab search. Use the smallest
-        # positive value as the denominator so the curve still plots.
         positive = [v for v in smoothed if v > 0]
         collab_val = min(positive) if positive else 1.0
 
-    indexed = [min(Y_CAP, round(100.0 * v / collab_val, 2)) for v in smoothed]
-    if any(v >= Y_CAP for v in indexed):
-        print(f"  note: {entry['artist']} clipped at y={Y_CAP}")
-    return indexed
+    pct_full = [min(PCT_CAP, round(100.0 * (v / collab_val - 1.0), 2)) for v in smoothed]
+    # Return only the post-collab window (month 0 through +POST_MONTHS)
+    pct = pct_full[PRE_MONTHS:]
+    if any(v >= PCT_CAP for v in pct):
+        print(f"  note: {entry['artist']} clipped at +{PCT_CAP}%")
+    return pct
 
 
 def main() -> None:
@@ -97,13 +94,19 @@ def main() -> None:
                 time.sleep(5 * (attempt + 1))
         else:
             raise SystemExit(f"Giving up on {entry['artist']}")
+        # Peak post-collab lift — curve now starts at month 0, so indexing
+        # directly is fine. Skip index 0 itself (= 0% by construction).
+        peak_val = max(curve)
+        peak_month = curve.index(peak_val)
         out.append({
             "artist": entry["artist"],
             "track": entry["track"],
             "tier": entry["tier"],
             "collabDate": entry["collab"],
-            "collabMonthIdx": WINDOW_MONTHS,
+            "collabMonthIdx": 0,
             "curve": curve,
+            "peakPct": peak_val,
+            "peakMonth": peak_month,
         })
         time.sleep(2)  # be gentle with Trends
 
