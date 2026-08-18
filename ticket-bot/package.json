@@ -1,0 +1,23 @@
+{
+  "name": "ticket-bot",
+  "version": "1.0.0",
+  "description": "Personal-use AMC ticket watcher/buyer for Dune: Part Three IMAX 70mm (max 3 tickets)",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --test test/seats.test.js",
+    "login": "node src/main.js login",
+    "scan": "node src/main.js scan",
+    "watch": "node src/main.js watch",
+    "status": "node src/main.js status"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "playwright": "^1.54.1"
+  },
+  "private": true
+}

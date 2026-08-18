@@ -1,0 +1,41 @@
+{
+  "movie": {
+    "titlePattern": "dune[:\\s]*part\\s*three|dune\\s*3",
+    "formatPattern": "70\\s*mm"
+  },
+  "theatre": {
+    "name": "AMC Lincoln Square 13",
+    "showtimesUrl": "https://www.amctheatres.com/movie-theatres/new-york-city/amc-lincoln-square-13/showtimes"
+  },
+  "dates": {
+    "start": "2026-12-17",
+    "end": "2026-12-20"
+  },
+  "tickets": {
+    "max": 3,
+    "min": 1,
+    "type": "Adult",
+    "maxTotalUsd": 150
+  },
+  "showtimePreference": {
+    "eveningStart": "16:30",
+    "eveningEnd": "23:30",
+    "eveningBonus": 100
+  },
+  "seats": {
+    "frontRowsToAvoid": 3,
+    "splitPenalty": 15,
+    "lastResortAnySeat": true
+  },
+  "watch": {
+    "pollSeconds": 30,
+    "jitterSeconds": 10,
+    "maxBuyAttempts": 4
+  },
+  "paths": {
+    "state": "state/state.json",
+    "screenshots": "screenshots",
+    "storageState": "secrets/amc-storage-state.json",
+    "result": "state/result.json"
+  }
+}
