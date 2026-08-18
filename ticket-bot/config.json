@@ -3,9 +3,15 @@
     "titlePattern": "dune[:\\s]*part\\s*three|dune\\s*3",
     "formatPattern": "70\\s*mm"
   },
+  "vendor": {
+    "name": "Fandango",
+    "homeUrl": "https://www.fandango.com/",
+    "signInUrl": "https://www.fandango.com/signin"
+  },
   "theatre": {
     "name": "AMC Lincoln Square 13",
-    "showtimesUrl": "https://www.amctheatres.com/movie-theatres/new-york-city/amc-lincoln-square-13/showtimes"
+    "showtimesUrl": null,
+    "searchUrl": "https://www.fandango.com/search?q=AMC%20Lincoln%20Square%2013"
   },
   "dates": {
     "start": "2026-12-17",
@@ -35,7 +41,7 @@
   "paths": {
     "state": "state/state.json",
     "screenshots": "screenshots",
-    "storageState": "secrets/amc-storage-state.json",
+    "storageState": "secrets/vendor-storage-state.json",
     "result": "state/result.json"
   }
 }

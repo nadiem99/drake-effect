@@ -33,14 +33,37 @@ async function extractShowtimes(page) {
   });
 }
 
-function showtimeUrlForDate(cfg, dateISO) {
-  // VERIFY on live site: AMC showtimes pages accept a date query parameter.
-  const base = cfg.theatre.showtimesUrl;
-  return `${base}?date=${dateISO}`;
+// Fandango theater-page URLs carry an opaque slug we can't know offline, so
+// when config leaves showtimesUrl null we resolve it once per process via the
+// vendor's search page: first link whose text matches the theatre name.
+// VERIFY on live site once network access is open.
+let resolvedTheatreUrl = null;
+
+async function resolveTheatreUrl(cfg, page) {
+  if (cfg.theatre.showtimesUrl) return cfg.theatre.showtimesUrl;
+  if (resolvedTheatreUrl) return resolvedTheatreUrl;
+  await page.goto(cfg.theatre.searchUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+  await page.waitForTimeout(3000);
+  const name = cfg.theatre.name;
+  const href = await page.evaluate((theatreName) => {
+    const links = [...document.querySelectorAll('a[href]')];
+    const hit = links.find((a) => (a.textContent || '').trim().toLowerCase().includes(theatreName.toLowerCase()));
+    return hit ? hit.href : null;
+  }, name);
+  if (!href) throw new Error(`could not resolve theatre page for "${name}" from ${cfg.theatre.searchUrl}`);
+  resolvedTheatreUrl = href;
+  log('resolved theatre page:', href);
+  return href;
+}
+
+function showtimeUrlForDate(base, dateISO) {
+  // VERIFY on live site: Fandango theater pages accept ?date=YYYY-MM-DD.
+  return `${base}${base.includes('?') ? '&' : '?'}date=${dateISO}`;
 }
 
 async function scanDate(cfg, page, dateISO) {
-  const url = showtimeUrlForDate(cfg, dateISO);
+  const base = await resolveTheatreUrl(cfg, page);
+  const url = showtimeUrlForDate(base, dateISO);
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
   await page.waitForTimeout(3000); // let client-side rendering settle
   const raw = await extractShowtimes(page);
@@ -88,4 +111,4 @@ async function scanAll(cfg, page, { debugArtifacts = false } = {}) {
   return rankShowtimes(cfg, found);
 }
 
-module.exports = { scanAll, scanDate, rankShowtimes, extractShowtimes };
+module.exports = { scanAll, scanDate, rankShowtimes, extractShowtimes, resolveTheatreUrl };

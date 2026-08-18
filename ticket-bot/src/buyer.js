@@ -125,9 +125,9 @@ async function handleTicketTypes(cfg, page, ticketCount) {
 async function handleSignIn(cfg, page) {
   // Saved storageState should make this page never appear. If it does and
   // credentials are in the environment, sign in once, without retry storms.
-  const email = process.env.AMC_EMAIL;
-  const password = process.env.AMC_PASSWORD;
-  if (!email || !password) throw new Error('sign-in page appeared but AMC_EMAIL/AMC_PASSWORD not set');
+  const email = process.env.TICKET_EMAIL;
+  const password = process.env.TICKET_PASSWORD;
+  if (!email || !password) throw new Error('sign-in page appeared but TICKET_EMAIL/TICKET_PASSWORD not set');
   await page.locator('input[type="email"], input[name*="email" i]').first().fill(email);
   await page.locator('input[type="password"]').first().fill(password);
   await screenshot(cfg, page, 'sign-in-filled');
@@ -155,8 +155,8 @@ async function handlePayment(cfg, page) {
   // account. If a CVV re-entry field is present, fill from env.
   const cvvField = page.locator('input[name*="cvv" i], input[aria-label*="security code" i], input[name*="securityCode" i]').first();
   if (await cvvField.count()) {
-    if (!process.env.AMC_CVV) throw new Error('payment page asks for CVV but AMC_CVV not set');
-    await cvvField.fill(process.env.AMC_CVV);
+    if (!process.env.TICKET_CVV) throw new Error('payment page asks for CVV but TICKET_CVV not set');
+    await cvvField.fill(process.env.TICKET_CVV);
   }
   await screenshot(cfg, page, 'payment-ready');
 

@@ -9,6 +9,17 @@ function loadConfig() {
   return JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'));
 }
 
+// Minimal .env loader for secrets/env (git-ignored, chmod 600). Values are
+// only ever read into this process; never logged, never written elsewhere.
+function loadSecrets() {
+  const p = path.join(ROOT, 'secrets', 'env');
+  if (!fs.existsSync(p)) return;
+  for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+    const m = line.match(/^([A-Z_]+)=(.*)$/);
+    if (m && !(m[1] in process.env)) process.env[m[1]] = m[2];
+  }
+}
+
 function log(...args) {
   console.log(new Date().toISOString(), ...args);
 }
@@ -61,4 +72,4 @@ function* dateRange(startISO, endISO) {
   }
 }
 
-module.exports = { ROOT, loadConfig, log, sleep, jitteredDelayMs, ensureDir, resolvePath, toMinutes, parseTimeText, dateRange };
+module.exports = { ROOT, loadConfig, loadSecrets, log, sleep, jitteredDelayMs, ensureDir, resolvePath, toMinutes, parseTimeText, dateRange };

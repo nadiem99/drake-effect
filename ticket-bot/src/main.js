@@ -12,7 +12,7 @@
 // config.json (tickets.max) and src/state.js respectively.
 
 const fs = require('fs');
-const { loadConfig, log, sleep, jitteredDelayMs, resolvePath } = require('./lib');
+const { loadConfig, loadSecrets, log, sleep, jitteredDelayMs, resolvePath } = require('./lib');
 const { launch } = require('./browser');
 const { scanAll } = require('./showtimes');
 const { attemptPurchase } = require('./buyer');
@@ -95,6 +95,7 @@ async function runBuy(cfg, url) {
 }
 
 async function main() {
+  loadSecrets();
   const cfg = loadConfig();
   const [, , cmd, arg] = process.argv;
   switch (cmd) {
